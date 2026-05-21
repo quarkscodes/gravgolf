@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://c3ojapjtlscma"]
+
+[ext_resource type="PackedScene" uid="uid://6wpgvph63yee" path="res://scenes/player/craft_racer.tscn" id="1_oul6g"]
+[ext_resource type="Script" uid="uid://6vv0sd4sfplg" path="res://scripts/player/player.gd" id="1_rkbax"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_rkbax"]
+radius = 0.025
+height = 0.1
+
+[node name="Player" type="RigidBody3D" unique_id=556098890]
+continuous_cd = true
+script = ExtResource("1_rkbax")
+
+[node name="Racer" parent="." unique_id=1531933609 instance=ExtResource("1_oul6g")]
+transform = Transform3D(0.015, 0, 0, 0, 0.015, 0, 0, 0, 0.015, 0, 0, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=307535698]
+transform = Transform3D(6.123233995736766e-17, -1, 0, 1, 6.123233995736766e-17, 0, 0, 0, 1, 0, 0, 0)
+shape = SubResource("CapsuleShape3D_rkbax")

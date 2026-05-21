@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://6wpgvph63yee"]
+
+[ext_resource type="PackedScene" uid="uid://c7t0ne7bptadn" path="res://assets/test_ship_0/ship.gltf" id="1_wjgon"]
+
+[node name="Node3D" type="Node3D" unique_id=510183996]
+
+[node name="blockbench_export" parent="." unique_id=251278534 instance=ExtResource("1_wjgon")]
+transform = Transform3D(4, 0, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0)

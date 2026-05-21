@@ -1,0 +1,83 @@
+[gd_resource type="Resource" script_class="PlanetData" format=3 uid="uid://47ks7eo47glw"]
+
+[ext_resource type="Script" uid="uid://c2jqt2crhjt5m" path="res://scripts/planet/planet_biome.gd" id="1_6v1vh"]
+[ext_resource type="Script" uid="uid://801v46h0fbm3" path="res://scripts/planet/planet_noise.gd" id="2_xd5x6"]
+[ext_resource type="Script" uid="uid://bc2g6aqd38bx4" path="res://scripts/planet/planet_data.gd" id="3_cse70"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_xly5a"]
+seed = 4
+
+[sub_resource type="Gradient" id="Gradient_pijgg"]
+offsets = PackedFloat32Array(0, 0.09154929, 1)
+colors = PackedColorArray(0.021152671, 0, 0.406512, 1, 0.17334697, 0.1355012, 0.04298065, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_xly5a"]
+gradient = SubResource("Gradient_pijgg")
+
+[sub_resource type="Resource" id="Resource_vfwbv"]
+script = ExtResource("1_6v1vh")
+gradient = SubResource("GradientTexture1D_xly5a")
+metadata/_custom_type_script = "uid://c2jqt2crhjt5m"
+
+[sub_resource type="Gradient" id="Gradient_5d3lp"]
+offsets = PackedFloat32Array(0, 0.028169014, 0.07042254, 0.45070422, 0.9084507, 1)
+colors = PackedColorArray(0.00018088438, 6.8977383e-06, 0.11159525, 1, 0.0042934553, 0.0001615268, 0.56839025, 1, 0.35512432, 0.42471427, 0.082042225, 1, 0.19925874, 0.16265753, 0.038244694, 1, 0.17438382, 0.14135554, 0.029831765, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_csob4"]
+gradient = SubResource("Gradient_5d3lp")
+
+[sub_resource type="Resource" id="Resource_aiioy"]
+script = ExtResource("1_6v1vh")
+gradient = SubResource("GradientTexture1D_csob4")
+start_height = 0.15
+metadata/_custom_type_script = "uid://c2jqt2crhjt5m"
+
+[sub_resource type="Gradient" id="Gradient_kk0h5"]
+offsets = PackedFloat32Array(0, 0.08450704, 1)
+colors = PackedColorArray(2.1658839e-06, 0, 0.5790794, 1, 0.5438664, 0.4788735, 0.25854284, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_qnx3u"]
+gradient = SubResource("Gradient_kk0h5")
+
+[sub_resource type="Resource" id="Resource_oglpw"]
+script = ExtResource("1_6v1vh")
+gradient = SubResource("GradientTexture1D_qnx3u")
+start_height = 0.85
+metadata/_custom_type_script = "uid://c2jqt2crhjt5m"
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_pijgg"]
+seed = 4
+frequency = 0.01699999999999999
+fractal_octaves = 3
+domain_warp_amplitude = 4.0
+domain_warp_fractal_octaves = 2
+
+[sub_resource type="Resource" id="Resource_xly5a"]
+script = ExtResource("2_xd5x6")
+amplitude = 1.4
+min_height = 0.6
+noise_map = SubResource("FastNoiseLite_pijgg")
+use_first_layer_as_mask = true
+metadata/_custom_type_script = "uid://801v46h0fbm3"
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_obm7d"]
+frequency = 0.01219999999999999
+
+[sub_resource type="Resource" id="Resource_5d3lp"]
+script = ExtResource("2_xd5x6")
+amplitude = 2.0
+min_height = 1.5
+noise_map = SubResource("FastNoiseLite_obm7d")
+metadata/_custom_type_script = "uid://801v46h0fbm3"
+
+[resource]
+script = ExtResource("3_cse70")
+biomes = Array[ExtResource("1_6v1vh")]([SubResource("Resource_vfwbv"), SubResource("Resource_aiioy"), SubResource("Resource_oglpw")])
+biome_amplitude = 0.3
+biome_blend = 0.1
+biome_noise = SubResource("FastNoiseLite_xly5a")
+biome_offset = 0.5
+radius = 200.0
+resolution = 200
+planet_noise = Array[ExtResource("2_xd5x6")]([SubResource("Resource_xly5a"), SubResource("Resource_5d3lp")])
+metadata/_custom_type_script = "uid://bc2g6aqd38bx4"
