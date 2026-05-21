@@ -56,6 +56,8 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed("swing"):
 		return
+	if GameState.focus != GameState.Focus.BALL:
+		return
 	match _state:
 		State.IDLE:
 			_begin_swing()
