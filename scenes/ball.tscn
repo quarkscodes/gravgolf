@@ -4,7 +4,7 @@
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_n1dj2"]
 rough = true
-bounce = 0.9
+bounce = 0.4
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_n1dj2"]
 radius = 0.1
