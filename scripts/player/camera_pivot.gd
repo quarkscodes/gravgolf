@@ -5,28 +5,21 @@ extends Node3D
 @export var ship_target: Node3D
 @export var ball_target: Node3D
 
-var _orbit_yaw: float = 0.0
-var _orbit_pitch: float = 0.3
-
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("focus_toggle"):
 		GameState.toggle_focus()
-		if GameState.focus == GameState.Focus.BALL:
-			var euler := basis.get_euler(EULER_ORDER_YXZ)
-			_orbit_yaw = euler.y
-			_orbit_pitch = euler.x
 
 
 func _process(delta: float) -> void:
-	var camera_pitch: float = (
-			Input.get_axis("camera_pitch_up", "camera_pitch_down") * input_response
-	)
 	match GameState.focus:
 		GameState.Focus.SHIP:
+			var camera_pitch: float = (
+					Input.get_axis("camera_pitch_up", "camera_pitch_down") * input_response
+			)
 			_follow_ship(delta, camera_pitch)
 		GameState.Focus.BALL:
-			_orbit_ball(delta, camera_pitch)
+			_orbit_ball(delta)
 
 
 func _follow_ship(delta: float, camera_pitch: float) -> void:
@@ -38,12 +31,13 @@ func _follow_ship(delta: float, camera_pitch: float) -> void:
 	position = position.lerp(ship_target.global_position, interpolation_weight * delta)
 
 
-func _orbit_ball(delta: float, camera_pitch: float) -> void:
+func _orbit_ball(delta: float) -> void:
 	if ball_target == null:
 		return
-	var yaw_input: float = Input.get_axis("yaw_left", "yaw_right") * input_response
-	_orbit_yaw -= yaw_input * PI * delta
-	_orbit_pitch -= camera_pitch * PI * delta
-	_orbit_pitch = clamp(_orbit_pitch, -PI * 0.45, PI * 0.45)
-	basis = Basis.from_euler(Vector3(_orbit_pitch, _orbit_yaw, 0), EULER_ORDER_YXZ)
+	var pitch: float = Input.get_axis("pitch_up", "pitch_down") * input_response
+	var yaw: float = Input.get_axis("yaw_left", "yaw_right") * input_response
+	var roll: float = Input.get_axis("roll_left", "roll_right") * input_response
+	basis = basis.rotated(basis.x, -pitch * PI * delta).orthonormalized()
+	basis = basis.rotated(basis.y, -yaw * PI * delta).orthonormalized()
+	basis = basis.rotated(basis.z, -roll * PI * delta).orthonormalized()
 	position = ball_target.global_position
