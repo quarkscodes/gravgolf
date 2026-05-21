@@ -11,9 +11,13 @@ config_version=5
 [application]
 
 config/name="Gravgolf"
-run/main_scene="uid://g415au7vi51a"
+run/main_scene="uid://c85m3j5w5ru0r"
 config/features=PackedStringArray("4.6", "Double Precision", "Forward Plus")
 config/icon="uid://bmgl3j2dm0keb"
+
+[autoload]
+
+GameState="*res://scripts/game_state.gd"
 
 [display]
 
@@ -83,10 +87,6 @@ focus_toggle={
 "events": [Object(InputEventJoypadButton,"resource_local_to_scene":false,"resource_name":"","device":-1,"button_index":3,"pressure":0.0,"pressed":false,"script":null)
 ]
 }
-
-[autoload]
-
-GameState="*res://scripts/game_state.gd"
 
 [physics]
 
