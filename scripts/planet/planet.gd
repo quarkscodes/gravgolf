@@ -50,7 +50,7 @@ func bake_planet() -> void:
 
 
 func _strip_generation_scripts(node: Node) -> void:
-	if node.get_script() == get_script() or node is PlanetMeshFace:
+	if node.get_script() == get_script() or node is PlanetMeshFace or node is GolfHole:
 		node.set_script(null)
 	for child: Node in node.get_children():
 		_strip_generation_scripts(child)
