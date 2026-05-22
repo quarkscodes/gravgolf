@@ -1,0 +1,88 @@
+[gd_scene format=3 uid="uid://c85m3j5w5ru0r"]
+
+[ext_resource type="Script" uid="uid://b57x10o13xfbh" path="res://game.gd" id="1_ryrav"]
+[ext_resource type="Texture2D" uid="uid://cs2v7gbi26n32" path="res://assets/kloppenheim_02_puresky_4k.hdr" id="2_eow3j"]
+[ext_resource type="PackedScene" uid="uid://c3ojapjtlscma" path="res://scenes/player/player.tscn" id="3_j5wjh"]
+[ext_resource type="PackedScene" uid="uid://bgonyja1ko8ln" path="res://scenes/player/camera_pivot.tscn" id="4_vef74"]
+[ext_resource type="PackedScene" uid="uid://bnuco1qmx0abp" path="res://assets/baked_planets/planet_baked.scn" id="5_hve3p"]
+[ext_resource type="PackedScene" uid="uid://bvybfcagotm5c" path="res://scenes/ball.tscn" id="6_mfdv2"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_7jktm"]
+font_size = 32
+font_color = Color(0.8784314, 0.85882354, 0, 1)
+outline_size = 3
+outline_color = Color(0.06879827, 0.06879828, 0.06879828, 1)
+
+[sub_resource type="PanoramaSkyMaterial" id="PanoramaSkyMaterial_7jktm"]
+panorama = ExtResource("2_eow3j")
+
+[sub_resource type="Sky" id="Sky_ryrav"]
+sky_material = SubResource("PanoramaSkyMaterial_7jktm")
+radiance_size = 1
+
+[sub_resource type="Environment" id="Environment_80nbo"]
+background_mode = 2
+background_color = Color(0.1584723, 0.15847233, 0.1584723, 1)
+sky = SubResource("Sky_ryrav")
+ambient_light_color = Color(1, 1, 1, 1)
+ambient_light_energy = 16.0
+glow_enabled = true
+volumetric_fog_enabled = true
+volumetric_fog_density = 0.0
+volumetric_fog_albedo = Color(1, 0, 1, 1)
+volumetric_fog_emission = Color(0.7581918, 0.7581918, 0.7581917, 1)
+volumetric_fog_length = 2048.0
+volumetric_fog_temporal_reprojection_enabled = false
+
+[node name="Game" type="Node3D" unique_id=1577607792]
+process_mode = 1
+script = ExtResource("1_ryrav")
+
+[node name="SpeedDisplay" type="Label" parent="." unique_id=1853013989]
+unique_name_in_owner = true
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -66.0
+offset_right = 66.0
+offset_bottom = 45.0
+grow_horizontal = 2
+text = "0"
+label_settings = SubResource("LabelSettings_7jktm")
+horizontal_alignment = 1
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=96780844]
+environment = SubResource("Environment_80nbo")
+
+[node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=857339247]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3932, 314, 5657)
+light_color = Color(1, 1, 0.81960785, 1)
+light_energy = 7.0
+light_volumetric_fog_energy = 0.213
+shadow_enabled = true
+shadow_bias = 1.09
+shadow_normal_bias = 1.881
+shadow_opacity = 0.75
+shadow_blur = 7.109
+omni_range = 30000.0
+omni_attenuation = 0.0
+
+[node name="Player" parent="." unique_id=556098890 instance=ExtResource("3_j5wjh")]
+unique_name_in_owner = true
+
+[node name="CameraPivot" parent="." unique_id=1756815400 node_paths=PackedStringArray("ship_target", "ball_target") instance=ExtResource("4_vef74")]
+ship_target = NodePath("../Player")
+ball_target = NodePath("../Ball")
+
+[node name="Planet" parent="." unique_id=1381236522 instance=ExtResource("5_hve3p")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -436.38733644321275)
+physics_material_override = null
+
+[node name="Area3D" parent="Planet" index="6" unique_id=642350143]
+gravity_point_unit_distance = 400.0
+gravity = 8.0
+
+[node name="Ball" parent="." unique_id=1915362101 instance=ExtResource("6_mfdv2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03928850580838416, -1.501075738577235)
+
+[editable path="Planet"]

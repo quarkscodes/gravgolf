@@ -10,6 +10,8 @@ extends RigidBody3D
 
 
 func _process(delta: float) -> void:
+	if GameState.focus != GameState.Focus.SHIP:
+		return
 	var pitch: float = Input.get_axis("pitch_up", "pitch_down") * input_response
 	var yaw: float = Input.get_axis("yaw_left", "yaw_right") * input_response
 	var roll: float = Input.get_axis("roll_left", "roll_right") * input_response
@@ -20,6 +22,8 @@ func _process(delta: float) -> void:
 
 
 func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
+	if GameState.focus != GameState.Focus.SHIP:
+		return
 	var forward_dir: Vector3 = -global_transform.basis.z
 	
 	if Input.is_action_pressed("throttle_up"):
