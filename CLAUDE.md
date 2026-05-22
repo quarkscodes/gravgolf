@@ -75,3 +75,10 @@ The biome texture is a 2D image where each row is one biome's gradient; the shad
 - `PlanetData` and its nested resources connect `changed` signals recursively, so any deeply-nested property change propagates up and triggers full regeneration automatically.
 - Mesh and collision updates in `PlanetMeshFace` are deferred (`call_deferred`) to avoid firing mid-physics-step.
 - The `StaticBody3D` collision children from `create_trimesh_collision()` are freed before each regeneration to prevent accumulation.
+
+## GDScript Standards
+
+- **Always use explicit static types.** Every `var`, `@export`, and `@onready` declaration must have an explicit type annotation. Every function parameter and return type must be annotated (use `-> void` for functions that return nothing).
+- Use typed array syntax: `Array[TypeName]` not plain `Array` where the element type is known.
+- Use packed array types (`PackedVector3Array`, `PackedInt32Array`, etc.) for performance-critical vertex/index data.
+- Type loop variables: `for item: Type in collection:`.
