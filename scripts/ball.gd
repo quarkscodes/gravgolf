@@ -17,7 +17,7 @@ func _ready() -> void:
 
 
 func _build_swing_ui() -> void:
-	var canvas := CanvasLayer.new()
+	var canvas: CanvasLayer = CanvasLayer.new()
 	add_child(canvas)
 
 	_swing_ui = Control.new()
@@ -36,6 +36,7 @@ func _build_swing_ui() -> void:
 	_progress_bar.anchor_bottom = 1.0
 	_progress_bar.offset_top = -120
 	_progress_bar.offset_bottom = -80
+	_progress_bar.show_percentage = false
 	_progress_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_swing_ui.add_child(_progress_bar)
 
@@ -73,9 +74,9 @@ func _begin_swing() -> void:
 
 
 func _commit_swing() -> void:
-	var camera := get_viewport().get_camera_3d()
+	var camera: Camera3D = get_viewport().get_camera_3d()
 	if camera != null:
-		var shot_dir := -camera.global_transform.basis.z
+		var shot_dir: Vector3 = -camera.global_transform.basis.z
 		apply_central_impulse(shot_dir * _bar_value * max_impulse)
 	_state = State.IDLE
 	_swing_ui.visible = false
