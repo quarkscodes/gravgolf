@@ -71,6 +71,7 @@ func _begin_swing() -> void:
 	_bar_value = 0.0
 	_bar_dir = 1.0
 	_swing_ui.visible = true
+	GameState.swinging = true
 
 
 func _commit_swing() -> void:
@@ -80,3 +81,4 @@ func _commit_swing() -> void:
 		apply_central_impulse(shot_dir * _bar_value * max_impulse)
 	_state = State.IDLE
 	_swing_ui.visible = false
+	GameState.swinging = false
