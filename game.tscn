@@ -4,8 +4,8 @@
 [ext_resource type="Texture2D" uid="uid://cs2v7gbi26n32" path="res://assets/kloppenheim_02_puresky_4k.hdr" id="2_eow3j"]
 [ext_resource type="PackedScene" uid="uid://c3ojapjtlscma" path="res://scenes/player/player.tscn" id="3_j5wjh"]
 [ext_resource type="PackedScene" uid="uid://bgonyja1ko8ln" path="res://scenes/player/camera_pivot.tscn" id="4_vef74"]
-[ext_resource type="PackedScene" uid="uid://bnuco1qmx0abp" path="res://assets/baked_planets/planet_baked.scn" id="5_hve3p"]
 [ext_resource type="PackedScene" uid="uid://bvybfcagotm5c" path="res://scenes/ball.tscn" id="6_mfdv2"]
+[ext_resource type="PackedScene" uid="uid://bip80ynsajxv6" path="res://scenes/planet/planet.tscn" id="6_ryrav"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_7jktm"]
 font_size = 32
@@ -74,15 +74,8 @@ unique_name_in_owner = true
 ship_target = NodePath("../Player")
 ball_target = NodePath("../Ball")
 
-[node name="Planet" parent="." unique_id=1381236522 instance=ExtResource("5_hve3p")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -436.38733644321275)
-physics_material_override = null
-
-[node name="Area3D" parent="Planet" index="6" unique_id=642350143]
-gravity_point_unit_distance = 400.0
-gravity = 8.0
-
 [node name="Ball" parent="." unique_id=1915362101 instance=ExtResource("6_mfdv2")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03928850580838416, -1.501075738577235)
 
-[editable path="Planet"]
+[node name="Planet" parent="." unique_id=1381236522 instance=ExtResource("6_ryrav")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -467.73429670626604)

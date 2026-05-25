@@ -28,6 +28,19 @@ func _rebuild() -> void:
 	var local_z: Vector3 = surface_direction.cross(local_x).normalized()
 	transform = Transform3D(Basis(local_x, surface_direction, local_z), surface_pos)
 	call_deferred("_build_mesh")
+	call_deferred("_update_planet_shader", surface_pos)
+
+
+func _update_planet_shader(hole_local_pos: Vector3) -> void:
+	var planet: Planet = get_parent() as Planet
+	if planet == null:
+		return
+	for child: Node in planet.get_children():
+		var face: PlanetMeshFace = child as PlanetMeshFace
+		if face == null or face.material_override == null:
+			continue
+		face.material_override.set_shader_parameter("hole_local_pos", hole_local_pos)
+		face.material_override.set_shader_parameter("hole_radius", HOLE_RADIUS)
 
 
 func _build_mesh() -> void:
@@ -103,6 +116,7 @@ func _build_mesh() -> void:
 
 	var mat: StandardMaterial3D = StandardMaterial3D.new()
 	mat.albedo_color = Color.WHITE
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	hole_mesh.surface_set_material(0, mat)
 	hole_mesh.surface_set_material(1, mat)
 
