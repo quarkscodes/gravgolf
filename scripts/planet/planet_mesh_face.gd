@@ -117,7 +117,7 @@ func _update_mesh(
 	
 	# Remove previous GolfHole
 	for child: StaticBody3D in get_children():
-		child.free()
+		child.queue_free()
 
 	# Get mesh array and filter out any surfaces that overlap hole
 	var face_verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
@@ -145,6 +145,10 @@ func _update_mesh(
 	var body: StaticBody3D = StaticBody3D.new()
 	body.add_child(col)
 	add_child(body)
+	if Engine.is_editor_hint():
+		var scene_root: Node = EditorInterface.get_edited_scene_root()
+		body.owner = scene_root
+		col.owner = scene_root
 
 
 # Returns the squared distance from point p to the nearest point on triangle (a,b,c).
