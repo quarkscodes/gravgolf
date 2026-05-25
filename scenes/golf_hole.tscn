@@ -2,5 +2,5 @@
 
 [ext_resource type="Script" uid="uid://dgolfhole001" path="res://scripts/hole.gd" id="1_hole0"]
 
-[node name="GolfHole" type="MeshInstance3D"]
+[node name="GolfHole" type="Node3D"]
 script = ExtResource("1_hole0")

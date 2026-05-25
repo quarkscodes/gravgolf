@@ -98,10 +98,10 @@ func regenerate_mesh(
 
 
 func _update_mesh(
-		arrays: Array, 
-		planet_data: PlanetData, 
-		biome_texture: ImageTexture, 
-		hole_pos: Vector3, 
+		arrays: Array,
+		planet_data: PlanetData,
+		biome_texture: ImageTexture,
+		hole_pos: Vector3,
 		hole_radius: float
 		) -> void:
 	var _mesh: ArrayMesh = ArrayMesh.new()
@@ -113,31 +113,78 @@ func _update_mesh(
 	mat.set_shader_parameter("min_height", planet_data.min_height)
 	mat.set_shader_parameter("max_height", planet_data.max_height)
 	mat.set_shader_parameter("height_color", biome_texture)
+	mat.set_shader_parameter("hole_local_pos", hole_pos)
+	mat.set_shader_parameter("hole_radius", hole_radius)
 	self.material_override = mat
-	
-	# Remove previous GolfHole
-	for child: StaticBody3D in get_children():
+
+	for child: Node in get_children():
 		child.queue_free()
 
-	# Get mesh array and filter out any surfaces that overlap hole
+	# Filter planet surface triangles that overlap the hole
 	var face_verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 	var face_idx: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
-	var col_faces: PackedVector3Array = PackedVector3Array() # Filtered array
+	var col_faces: PackedVector3Array = PackedVector3Array()
 	var hole_radius_sq: float = hole_radius * hole_radius
+	var had_hole: bool = false
 	for i: int in range(0, face_idx.size(), 3):
 		var v0: Vector3 = face_verts[face_idx[i]]
 		var v1: Vector3 = face_verts[face_idx[i + 1]]
 		var v2: Vector3 = face_verts[face_idx[i + 2]]
 		if hole_radius > 0.0 and _closest_dist_sq(hole_pos, v0, v1, v2) < hole_radius_sq:
+			had_hole = true
 			continue
 		col_faces.append(v0)
 		col_faces.append(v1)
 		col_faces.append(v2)
 
-	# TODO: Add surfaces to col_faces array that fill in the now empty space
-	#       between hole face circle vertices and local vertices that were just detached.
+	if hole_radius > 0.0:
+		var outer_indices: Dictionary = {}
+		for i: int in range(0, face_idx.size(), 3):
+			var v0: Vector3 = face_verts[face_idx[i]]
+			var v1: Vector3 = face_verts[face_idx[i + 1]]
+			var v2: Vector3 = face_verts[face_idx[i + 2]]
+			if _closest_dist_sq(hole_pos, v0, v1, v2) < hole_radius_sq:
+				for k: int in range(3):
+					var idx: int = face_idx[i + k]
+					if face_verts[idx].distance_squared_to(hole_pos) > hole_radius_sq:
+						outer_indices[idx] = true
 
-	# Use filtered array to construct collision shape
+		var outer_verts: Array[Vector3] = []
+		for idx: int in outer_indices:
+			outer_verts.append(face_verts[idx])
+
+		if outer_verts.size() >= 2:
+			var up: Vector3 = hole_pos.normalized()
+			var right: Vector3 = up.cross(Vector3.UP)
+			if right.length_squared() < 0.001:
+				right = up.cross(Vector3.FORWARD)
+			right = right.normalized()
+			var fwd: Vector3 = up.cross(right).normalized()
+
+			outer_verts.sort_custom(func(a: Vector3, b: Vector3) -> bool:
+				var da: Vector3 = a - hole_pos
+				var db: Vector3 = b - hole_pos
+				return atan2(da.dot(fwd), da.dot(right)) < atan2(db.dot(fwd), db.dot(right))
+			)
+
+			for j: int in range(outer_verts.size()):
+				var v_a: Vector3 = outer_verts[j]
+				var v_b: Vector3 = outer_verts[(j + 1) % outer_verts.size()]
+				var off_a: Vector3 = v_a - hole_pos
+				var off_b: Vector3 = v_b - hole_pos
+				var tang_a: Vector3 = off_a - off_a.dot(up) * up
+				var tang_b: Vector3 = off_b - off_b.dot(up) * up
+				if tang_a.length_squared() < 0.0001 or tang_b.length_squared() < 0.0001:
+					continue
+				var inner_a: Vector3 = hole_pos + tang_a.normalized() * hole_radius
+				var inner_b: Vector3 = hole_pos + tang_b.normalized() * hole_radius
+				col_faces.append(v_a)
+				col_faces.append(inner_b)
+				col_faces.append(v_b)
+				col_faces.append(v_a)
+				col_faces.append(inner_a)
+				col_faces.append(inner_b)
+
 	var col_shape: ConcavePolygonShape3D = ConcavePolygonShape3D.new()
 	col_shape.set_faces(col_faces)
 	var col: CollisionShape3D = CollisionShape3D.new()
@@ -149,6 +196,113 @@ func _update_mesh(
 		var scene_root: Node = EditorInterface.get_edited_scene_root()
 		body.owner = scene_root
 		col.owner = scene_root
+
+	if not had_hole:
+		return
+
+	# Build cup geometry on the one face that contains the hole
+	var up: Vector3 = hole_pos.normalized()
+	var right: Vector3 = up.cross(Vector3.UP)
+	if right.length_squared() < 0.001:
+		right = up.cross(Vector3.FORWARD)
+	right = right.normalized()
+	var fwd: Vector3 = up.cross(right).normalized()
+	var floor_center: Vector3 = hole_pos - up * GolfHole.HOLE_DEPTH
+
+	var wall_verts: PackedVector3Array = PackedVector3Array()
+	var wall_normals: PackedVector3Array = PackedVector3Array()
+	var wall_indices: PackedInt32Array = PackedInt32Array()
+	wall_verts.resize(GolfHole.SEGMENTS * 2)
+	wall_normals.resize(GolfHole.SEGMENTS * 2)
+	wall_indices.resize(GolfHole.SEGMENTS * 6)
+	for i: int in range(GolfHole.SEGMENTS):
+		var a: float = float(i) / float(GolfHole.SEGMENTS) * TAU
+		var radial: Vector3 = right * cos(a) + fwd * sin(a)
+		wall_verts[i * 2] = floor_center + radial * GolfHole.HOLE_RADIUS
+		wall_normals[i * 2] = -radial
+		wall_verts[i * 2 + 1] = hole_pos + radial * GolfHole.HOLE_RADIUS
+		wall_normals[i * 2 + 1] = -radial
+		var next: int = (i + 1) % GolfHole.SEGMENTS
+		var bi: int = i * 2
+		var bn: int = next * 2
+		wall_indices[i * 6 + 0] = bi
+		wall_indices[i * 6 + 1] = bn + 1
+		wall_indices[i * 6 + 2] = bi + 1
+		wall_indices[i * 6 + 3] = bi
+		wall_indices[i * 6 + 4] = bn
+		wall_indices[i * 6 + 5] = bn + 1
+
+	var cap_verts: PackedVector3Array = PackedVector3Array()
+	var cap_normals: PackedVector3Array = PackedVector3Array()
+	var cap_indices: PackedInt32Array = PackedInt32Array()
+	cap_verts.resize(GolfHole.SEGMENTS + 1)
+	cap_normals.resize(GolfHole.SEGMENTS + 1)
+	cap_indices.resize(GolfHole.SEGMENTS * 3)
+	cap_verts[0] = floor_center
+	cap_normals[0] = up
+	for i: int in range(GolfHole.SEGMENTS):
+		var a: float = float(i) / float(GolfHole.SEGMENTS) * TAU
+		cap_verts[i + 1] = floor_center + (right * cos(a) + fwd * sin(a)) * GolfHole.HOLE_RADIUS
+		cap_normals[i + 1] = up
+		var next: int = (i + 1) % GolfHole.SEGMENTS
+		cap_indices[i * 3 + 0] = 0
+		cap_indices[i * 3 + 1] = next + 1
+		cap_indices[i * 3 + 2] = i + 1
+
+	var wall_surface: Array = []
+	wall_surface.resize(Mesh.ARRAY_MAX)
+	wall_surface[Mesh.ARRAY_VERTEX] = wall_verts
+	wall_surface[Mesh.ARRAY_NORMAL] = wall_normals
+	wall_surface[Mesh.ARRAY_INDEX] = wall_indices
+
+	var cap_surface: Array = []
+	cap_surface.resize(Mesh.ARRAY_MAX)
+	cap_surface[Mesh.ARRAY_VERTEX] = cap_verts
+	cap_surface[Mesh.ARRAY_NORMAL] = cap_normals
+	cap_surface[Mesh.ARRAY_INDEX] = cap_indices
+
+	var cup_mesh: ArrayMesh = ArrayMesh.new()
+	cup_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, wall_surface)
+	cup_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, cap_surface)
+	var cup_mat: StandardMaterial3D = StandardMaterial3D.new()
+	cup_mat.albedo_color = Color.WHITE
+	cup_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	cup_mesh.surface_set_material(0, cup_mat)
+	cup_mesh.surface_set_material(1, cup_mat)
+	var cup_inst: MeshInstance3D = MeshInstance3D.new()
+	cup_inst.mesh = cup_mesh
+	add_child(cup_inst)
+
+	var wall_col_faces: PackedVector3Array = PackedVector3Array()
+	for i: int in range(0, wall_indices.size(), 3):
+		wall_col_faces.append(wall_verts[wall_indices[i]])
+		wall_col_faces.append(wall_verts[wall_indices[i + 1]])
+		wall_col_faces.append(wall_verts[wall_indices[i + 2]])
+	var wall_shape: ConcavePolygonShape3D = ConcavePolygonShape3D.new()
+	wall_shape.set_faces(wall_col_faces)
+	var wall_col: CollisionShape3D = CollisionShape3D.new()
+	wall_col.shape = wall_shape
+	var wall_body: StaticBody3D = StaticBody3D.new()
+	wall_body.add_child(wall_col)
+	add_child(wall_body)
+
+	# BoxShape3D is more reliable than ConcavePolygonShape3D for repeated fast contacts
+	var floor_box: BoxShape3D = BoxShape3D.new()
+	floor_box.size = Vector3(GolfHole.HOLE_RADIUS * 2.2, 0.05, GolfHole.HOLE_RADIUS * 2.2)
+	var floor_col: CollisionShape3D = CollisionShape3D.new()
+	floor_col.shape = floor_box
+	floor_col.transform = Transform3D(Basis(right, up, fwd), floor_center - up * 0.025)
+	var floor_body: StaticBody3D = StaticBody3D.new()
+	floor_body.add_child(floor_col)
+	add_child(floor_body)
+
+	if Engine.is_editor_hint():
+		var scene_root_cup: Node = EditorInterface.get_edited_scene_root()
+		cup_inst.owner = scene_root_cup
+		wall_body.owner = scene_root_cup
+		wall_col.owner = scene_root_cup
+		floor_body.owner = scene_root_cup
+		floor_col.owner = scene_root_cup
 
 
 # Returns the squared distance from point p to the nearest point on triangle (a,b,c).
