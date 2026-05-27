@@ -1,3 +1,4 @@
+class_name Ball
 extends RigidBody3D
 
 @export var max_impulse: float = 5.0

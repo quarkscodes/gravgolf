@@ -1,5 +1,7 @@
 extends Node
 
+signal hole_completed
+
 enum Focus { SHIP, BALL }
 
 var focus: Focus = Focus.SHIP

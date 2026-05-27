@@ -296,6 +296,20 @@ func _update_mesh(
 	floor_body.add_child(floor_col)
 	add_child(floor_body)
 
+	var cup_detector: CupDetector = CupDetector.new()
+	var detector_shape: CylinderShape3D = CylinderShape3D.new()
+	detector_shape.radius = GolfHole.HOLE_RADIUS * 0.9
+	detector_shape.height = GolfHole.HOLE_DEPTH
+	var detector_col: CollisionShape3D = CollisionShape3D.new()
+	detector_col.shape = detector_shape
+	# Basis(right, up, fwd) orients the cylinder's Y-axis along the surface normal
+	detector_col.transform = Transform3D(
+			Basis(right, up, fwd),
+			hole_pos - up * (GolfHole.HOLE_DEPTH / 2.0)
+	)
+	cup_detector.add_child(detector_col)
+	add_child(cup_detector)
+
 	if Engine.is_editor_hint():
 		var scene_root_cup: Node = EditorInterface.get_edited_scene_root()
 		cup_inst.owner = scene_root_cup
@@ -303,6 +317,8 @@ func _update_mesh(
 		wall_col.owner = scene_root_cup
 		floor_body.owner = scene_root_cup
 		floor_col.owner = scene_root_cup
+		cup_detector.owner = scene_root_cup
+		detector_col.owner = scene_root_cup
 
 
 # Returns the squared distance from point p to the nearest point on triangle (a,b,c).
