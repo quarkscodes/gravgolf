@@ -21,9 +21,10 @@ func _rebuild() -> void:
 	if planet == null or planet.planet_data == null:
 		return
 	var surface_pos: Vector3 = planet.planet_data.point_on_planet(surface_direction)
-	var perp: Vector3 = surface_direction.cross(Vector3.FORWARD)
+	var up: Vector3 = planet.planet_data.plateau_normal_at(surface_direction)
+	var perp: Vector3 = up.cross(Vector3.FORWARD)
 	if perp.length() < 0.001:
-		perp = surface_direction.cross(Vector3.RIGHT)
+		perp = up.cross(Vector3.RIGHT)
 	var local_x: Vector3 = perp.normalized()
-	var local_z: Vector3 = surface_direction.cross(local_x).normalized()
-	transform = Transform3D(Basis(local_x, surface_direction, local_z), surface_pos)
+	var local_z: Vector3 = up.cross(local_x).normalized()
+	transform = Transform3D(Basis(local_x, up, local_z), surface_pos)

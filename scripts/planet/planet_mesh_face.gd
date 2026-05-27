@@ -8,9 +8,10 @@ const PLANET_SHADER: Shader = preload("res://shaders/planet_surface.gdshader")
 
 
 func regenerate_mesh(
-		planet_data: PlanetData, 
-		biome_texture: ImageTexture, 
-		hole_pos: Vector3 = Vector3.ZERO, 
+		planet_data: PlanetData,
+		biome_texture: ImageTexture,
+		hole_pos: Vector3 = Vector3.ZERO,
+		hole_normal: Vector3 = Vector3.ZERO,
 		hole_radius: float = 0.0
 		) -> void:
 	var arrays: Array = []
@@ -94,7 +95,7 @@ func regenerate_mesh(
 	arrays[Mesh.ARRAY_INDEX] = index_array
 	
 	# Deferred so mesh and collision updates don't fire mid-physics-step or during @tool regeneration
-	call_deferred("_update_mesh", arrays, planet_data, biome_texture, hole_pos, hole_radius)
+	call_deferred("_update_mesh", arrays, planet_data, biome_texture, hole_pos, hole_normal, hole_radius)
 
 
 func _update_mesh(
@@ -102,6 +103,7 @@ func _update_mesh(
 		planet_data: PlanetData,
 		biome_texture: ImageTexture,
 		hole_pos: Vector3,
+		hole_normal: Vector3,
 		hole_radius: float
 		) -> void:
 	var _mesh: ArrayMesh = ArrayMesh.new()
@@ -192,16 +194,12 @@ func _update_mesh(
 	var body: StaticBody3D = StaticBody3D.new()
 	body.add_child(col)
 	add_child(body)
-	if Engine.is_editor_hint():
-		var scene_root: Node = EditorInterface.get_edited_scene_root()
-		body.owner = scene_root
-		col.owner = scene_root
 
 	if not had_hole:
 		return
 
 	# Build cup geometry on the one face that contains the hole
-	var up: Vector3 = hole_pos.normalized()
+	var up: Vector3 = hole_normal if hole_normal.length_squared() > 0.5 else hole_pos.normalized()
 	var right: Vector3 = up.cross(Vector3.UP)
 	if right.length_squared() < 0.001:
 		right = up.cross(Vector3.FORWARD)
@@ -309,16 +307,6 @@ func _update_mesh(
 	)
 	cup_detector.add_child(detector_col)
 	add_child(cup_detector)
-
-	if Engine.is_editor_hint():
-		var scene_root_cup: Node = EditorInterface.get_edited_scene_root()
-		cup_inst.owner = scene_root_cup
-		wall_body.owner = scene_root_cup
-		wall_col.owner = scene_root_cup
-		floor_body.owner = scene_root_cup
-		floor_col.owner = scene_root_cup
-		cup_detector.owner = scene_root_cup
-		detector_col.owner = scene_root_cup
 
 
 # Returns the squared distance from point p to the nearest point on triangle (a,b,c).
