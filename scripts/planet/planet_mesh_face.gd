@@ -10,9 +10,7 @@ const PLANET_SHADER: Shader = preload("res://shaders/planet_surface.gdshader")
 func regenerate_mesh(
 		planet_data: PlanetData,
 		biome_texture: ImageTexture,
-		hole_pos: Vector3 = Vector3.ZERO,
-		hole_normal: Vector3 = Vector3.ZERO,
-		hole_radius: float = 0.0
+		hole_data: HoleData = null
 		) -> void:
 	var arrays: Array = []
 	arrays.resize(Mesh.ARRAY_MAX)
@@ -22,6 +20,18 @@ func regenerate_mesh(
 	var normal_array: PackedVector3Array = PackedVector3Array()
 	var index_array: PackedInt32Array = PackedInt32Array()
 	
+	var hole_pos: Vector3 = Vector3.ZERO
+	var hole_normal: Vector3 = Vector3.ZERO
+	var hole_radius: float = 0.0
+	var hole_depth: float = 0.0
+	var hole_segments: int = 32
+	if hole_data != null:
+		hole_pos = planet_data.point_on_planet(hole_data.surface_direction)
+		hole_normal = planet_data.plateau_normal_at(hole_data.surface_direction)
+		hole_radius = hole_data.radius
+		hole_depth = hole_data.depth
+		hole_segments = hole_data.segments
+
 	var resolution: int = planet_data.resolution
 	var num_vertices: int = resolution * resolution
 	var num_indices: int = (resolution - 1) * (resolution - 1) * 6
@@ -95,7 +105,8 @@ func regenerate_mesh(
 	arrays[Mesh.ARRAY_INDEX] = index_array
 	
 	# Deferred so mesh and collision updates don't fire mid-physics-step or during @tool regeneration
-	call_deferred("_update_mesh", arrays, planet_data, biome_texture, hole_pos, hole_normal, hole_radius)
+	call_deferred("_update_mesh", arrays, planet_data, biome_texture,
+			hole_pos, hole_normal, hole_radius, hole_depth, hole_segments)
 
 
 func _update_mesh(
@@ -104,7 +115,9 @@ func _update_mesh(
 		biome_texture: ImageTexture,
 		hole_pos: Vector3,
 		hole_normal: Vector3,
-		hole_radius: float
+		hole_radius: float,
+		hole_depth: float,
+		hole_segments: int
 		) -> void:
 	var _mesh: ArrayMesh = ArrayMesh.new()
 	_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
@@ -205,22 +218,22 @@ func _update_mesh(
 		right = up.cross(Vector3.FORWARD)
 	right = right.normalized()
 	var fwd: Vector3 = up.cross(right).normalized()
-	var floor_center: Vector3 = hole_pos - up * GolfHole.HOLE_DEPTH
+	var floor_center: Vector3 = hole_pos - up * hole_depth
 
 	var wall_verts: PackedVector3Array = PackedVector3Array()
 	var wall_normals: PackedVector3Array = PackedVector3Array()
 	var wall_indices: PackedInt32Array = PackedInt32Array()
-	wall_verts.resize(GolfHole.SEGMENTS * 2)
-	wall_normals.resize(GolfHole.SEGMENTS * 2)
-	wall_indices.resize(GolfHole.SEGMENTS * 6)
-	for i: int in range(GolfHole.SEGMENTS):
-		var a: float = float(i) / float(GolfHole.SEGMENTS) * TAU
+	wall_verts.resize(hole_segments * 2)
+	wall_normals.resize(hole_segments * 2)
+	wall_indices.resize(hole_segments * 6)
+	for i: int in range(hole_segments):
+		var a: float = float(i) / float(hole_segments) * TAU
 		var radial: Vector3 = right * cos(a) + fwd * sin(a)
-		wall_verts[i * 2] = floor_center + radial * GolfHole.HOLE_RADIUS
+		wall_verts[i * 2] = floor_center + radial * hole_radius
 		wall_normals[i * 2] = -radial
-		wall_verts[i * 2 + 1] = hole_pos + radial * GolfHole.HOLE_RADIUS
+		wall_verts[i * 2 + 1] = hole_pos + radial * hole_radius
 		wall_normals[i * 2 + 1] = -radial
-		var next: int = (i + 1) % GolfHole.SEGMENTS
+		var next: int = (i + 1) % hole_segments
 		var bi: int = i * 2
 		var bn: int = next * 2
 		wall_indices[i * 6 + 0] = bi
@@ -233,16 +246,16 @@ func _update_mesh(
 	var cap_verts: PackedVector3Array = PackedVector3Array()
 	var cap_normals: PackedVector3Array = PackedVector3Array()
 	var cap_indices: PackedInt32Array = PackedInt32Array()
-	cap_verts.resize(GolfHole.SEGMENTS + 1)
-	cap_normals.resize(GolfHole.SEGMENTS + 1)
-	cap_indices.resize(GolfHole.SEGMENTS * 3)
+	cap_verts.resize(hole_segments + 1)
+	cap_normals.resize(hole_segments + 1)
+	cap_indices.resize(hole_segments * 3)
 	cap_verts[0] = floor_center
 	cap_normals[0] = up
-	for i: int in range(GolfHole.SEGMENTS):
-		var a: float = float(i) / float(GolfHole.SEGMENTS) * TAU
-		cap_verts[i + 1] = floor_center + (right * cos(a) + fwd * sin(a)) * GolfHole.HOLE_RADIUS
+	for i: int in range(hole_segments):
+		var a: float = float(i) / float(hole_segments) * TAU
+		cap_verts[i + 1] = floor_center + (right * cos(a) + fwd * sin(a)) * hole_radius
 		cap_normals[i + 1] = up
-		var next: int = (i + 1) % GolfHole.SEGMENTS
+		var next: int = (i + 1) % hole_segments
 		cap_indices[i * 3 + 0] = 0
 		cap_indices[i * 3 + 1] = next + 1
 		cap_indices[i * 3 + 2] = i + 1
@@ -286,7 +299,7 @@ func _update_mesh(
 
 	# BoxShape3D is more reliable than ConcavePolygonShape3D for repeated fast contacts
 	var floor_box: BoxShape3D = BoxShape3D.new()
-	floor_box.size = Vector3(GolfHole.HOLE_RADIUS * 2.2, 0.05, GolfHole.HOLE_RADIUS * 2.2)
+	floor_box.size = Vector3(hole_radius * 2.2, 0.05, hole_radius * 2.2)
 	var floor_col: CollisionShape3D = CollisionShape3D.new()
 	floor_col.shape = floor_box
 	floor_col.transform = Transform3D(Basis(right, up, fwd), floor_center - up * 0.025)
@@ -296,14 +309,14 @@ func _update_mesh(
 
 	var cup_detector: CupDetector = CupDetector.new()
 	var detector_shape: CylinderShape3D = CylinderShape3D.new()
-	detector_shape.radius = GolfHole.HOLE_RADIUS * 0.9
-	detector_shape.height = GolfHole.HOLE_DEPTH
+	detector_shape.radius = hole_radius * 0.9
+	detector_shape.height = hole_depth
 	var detector_col: CollisionShape3D = CollisionShape3D.new()
 	detector_col.shape = detector_shape
 	# Basis(right, up, fwd) orients the cylinder's Y-axis along the surface normal
 	detector_col.transform = Transform3D(
 			Basis(right, up, fwd),
-			hole_pos - up * (GolfHole.HOLE_DEPTH / 2.0)
+			hole_pos - up * (hole_depth / 2.0)
 	)
 	cup_detector.add_child(detector_col)
 	add_child(cup_detector)

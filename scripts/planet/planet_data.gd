@@ -72,6 +72,16 @@ const MIN_PLATEAU_AREA: float = 50.0  # minimum flat surface area in square mete
 	set(val):
 		plateau_dome_height = val
 		emit_changed()
+@export var gravity: float = 9.8:
+	set(val):
+		gravity = val
+		emit_changed()
+@export var hole: HoleData:
+	set(val):
+		hole = val
+		emit_changed()
+		if hole != null and not hole.is_connected("changed", emit_changed):
+			hole.changed.connect(emit_changed)
 
 var min_height: float = 99999.0
 var max_height: float = 0.0

@@ -29,11 +29,7 @@ func on_data_changed() -> void:
 		if child.get_meta("plateau_gravity", false):
 			child.queue_free()
 
-	var planet_gravity: float = 9.8
-	for child: Node in get_children():
-		if child is Area3D and not child.get_meta("plateau_gravity", false):
-			planet_gravity = child.gravity
-			break
+	var planet_gravity: float = planet_data.gravity
 
 	for plateau: PlanetPlateau in planet_data.plateaus:
 		var plateau_surface_height: float = planet_data.radius * (plateau.flat_elevation + 1.0)
@@ -55,29 +51,26 @@ func on_data_changed() -> void:
 		add_child(area)
 
 	var biome_texture: ImageTexture = planet_data.update_biome_texture()
-	var hole_pos: Vector3 = Vector3.ZERO
-	var hole_normal: Vector3 = Vector3.ZERO
-	var hole_radius: float = 0.0
-	for child: Node3D in get_children():
-		if child is GolfHole:
-			hole_pos = planet_data.point_on_planet(child.surface_direction)
-			hole_normal = planet_data.plateau_normal_at(child.surface_direction)
-			hole_radius = GolfHole.HOLE_RADIUS
-			break
+	var hole_data: HoleData = planet_data.hole
 	for child: Node3D in get_children():
 		if child is PlanetMeshFace:
-			child.regenerate_mesh(planet_data, biome_texture, hole_pos, hole_normal, hole_radius)
+			child.regenerate_mesh(planet_data, biome_texture, hole_data)
 		elif child is GolfHole:
 			child._rebuild()
 
 
 func add_golf_hole() -> void:
-	if not Engine.is_editor_hint():
+	if not Engine.is_editor_hint() or planet_data == null:
 		return
-	var hole: GolfHole = GolfHole.new()
-	hole.name = "GolfHole"
-	add_child(hole)
-	hole.owner = EditorInterface.get_edited_scene_root()
+	if planet_data.hole == null:
+		planet_data.hole = HoleData.new()
+	for child: Node in get_children():
+		if child is GolfHole:
+			return
+	var hole_node: GolfHole = GolfHole.new()
+	hole_node.name = "GolfHole"
+	add_child(hole_node)
+	hole_node.owner = EditorInterface.get_edited_scene_root()
 
 
 func bake_planet() -> void:
