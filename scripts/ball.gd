@@ -1,7 +1,8 @@
+class_name Ball
 extends RigidBody3D
 
-@export var max_impulse: float = 10.0
-@export var bar_speed: float = 1.2  # full oscillation cycles per second
+@export var max_impulse: float = 5.0
+@export var bar_speed: float = 1.0  # full oscillation cycles per second
 
 enum State { IDLE, SWINGING }
 

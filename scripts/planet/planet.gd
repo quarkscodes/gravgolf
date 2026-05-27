@@ -1,4 +1,5 @@
 @tool
+class_name Planet
 extends StaticBody3D
 
 @export var planet_data: PlanetData:
@@ -10,6 +11,7 @@ extends StaticBody3D
 
 @export var bake_output_path: String = "res://assets/baked_planets/"
 @export_tool_button("Bake Planet") var _bake_btn: Callable = bake_planet
+@export_tool_button("Add Golf Hole") var _add_hole_btn: Callable = add_golf_hole
 
 
 func _ready() -> void:
@@ -22,10 +24,27 @@ func on_data_changed() -> void:
 	planet_data.min_height = 99999.0
 	planet_data.max_height = 0.0
 	var biome_texture: ImageTexture = planet_data.update_biome_texture()
+	var hole_pos: Vector3 = Vector3.ZERO
+	var hole_radius: float = 0.0
+	for child: Node3D in get_children():
+		if child is GolfHole:
+			hole_pos = planet_data.point_on_planet(child.surface_direction)
+			hole_radius = GolfHole.HOLE_RADIUS
+			break
 	for child: Node3D in get_children():
 		if child is PlanetMeshFace:
-			var face: PlanetMeshFace = child
-			face.regenerate_mesh(planet_data, biome_texture)
+			child.regenerate_mesh(planet_data, biome_texture, hole_pos, hole_radius)
+		elif child is GolfHole:
+			child._rebuild()
+
+
+func add_golf_hole() -> void:
+	if not Engine.is_editor_hint():
+		return
+	var hole: GolfHole = GolfHole.new()
+	hole.name = "GolfHole"
+	add_child(hole)
+	hole.owner = EditorInterface.get_edited_scene_root()
 
 
 func bake_planet() -> void:
@@ -50,7 +69,7 @@ func bake_planet() -> void:
 
 
 func _strip_generation_scripts(node: Node) -> void:
-	if node.get_script() == get_script() or node is PlanetMeshFace:
+	if node.get_script() == get_script() or node is PlanetMeshFace or node is GolfHole:
 		node.set_script(null)
 	for child: Node in node.get_children():
 		_strip_generation_scripts(child)

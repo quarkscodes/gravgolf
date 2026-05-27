@@ -65,8 +65,7 @@ frequency = 0.01219999999999999
 
 [sub_resource type="Resource" id="Resource_5d3lp"]
 script = ExtResource("2_xd5x6")
-amplitude = 2.0
-min_height = 1.5
+min_height = 0.5
 noise_map = SubResource("FastNoiseLite_obm7d")
 metadata/_custom_type_script = "uid://801v46h0fbm3"
 
