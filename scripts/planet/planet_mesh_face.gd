@@ -18,6 +18,7 @@ func regenerate_mesh(
 	var vertex_array: PackedVector3Array = PackedVector3Array()
 	var uv_array: PackedVector2Array = PackedVector2Array()
 	var normal_array: PackedVector3Array = PackedVector3Array()
+	var color_array: PackedColorArray = PackedColorArray()
 	var index_array: PackedInt32Array = PackedInt32Array()
 	
 	var hole_pos: Vector3 = Vector3.ZERO
@@ -39,6 +40,7 @@ func regenerate_mesh(
 	normal_array.resize(num_vertices)
 	uv_array.resize(num_vertices)
 	vertex_array.resize(num_vertices)
+	color_array.resize(num_vertices)
 	index_array.resize(num_indices)
 	
 	var tri_index: int = 0
@@ -58,10 +60,13 @@ func regenerate_mesh(
 			var pointOnUnitSphere: Vector3 = pointOnUnitCube.normalized()
 			var biome_index: float = planet_data.biome_percent_from_point(pointOnUnitSphere)
 			var pointOnPlanet: Vector3 = planet_data.point_on_planet(pointOnUnitSphere)
-			
+			var plateau_blend: float = planet_data.plateau_blend_at(pointOnUnitSphere)
+
 			vertex_array[i] = pointOnPlanet
 			# UV.x unused; UV.y carries biome index so the shader can sample the biome texture row
 			uv_array[i] = Vector2(0.0, biome_index)
+			# R channel carries plateau blend so the shader can apply fairway stripe coloring
+			color_array[i] = Color(plateau_blend, 0.0, 0.0, 1.0)
 			
 			var l: float = pointOnPlanet.length()
 			if l < planet_data.min_height:
@@ -102,8 +107,9 @@ func regenerate_mesh(
 	arrays[Mesh.ARRAY_VERTEX] = vertex_array
 	arrays[Mesh.ARRAY_NORMAL] = normal_array
 	arrays[Mesh.ARRAY_TEX_UV] = uv_array
+	arrays[Mesh.ARRAY_COLOR] = color_array
 	arrays[Mesh.ARRAY_INDEX] = index_array
-	
+
 	# Deferred so mesh and collision updates don't fire mid-physics-step or during @tool regeneration
 	call_deferred("_update_mesh", arrays, planet_data, biome_texture,
 			hole_pos, hole_normal, hole_radius, hole_depth, hole_segments)
@@ -130,6 +136,7 @@ func _update_mesh(
 	mat.set_shader_parameter("height_color", biome_texture)
 	mat.set_shader_parameter("hole_local_pos", hole_pos)
 	mat.set_shader_parameter("hole_radius", hole_radius)
+	mat.set_shader_parameter("stripe_width", 3.0)
 	self.material_override = mat
 
 	for child: Node in get_children():

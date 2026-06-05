@@ -33,22 +33,39 @@ func on_data_changed() -> void:
 
 	for plateau: PlanetPlateau in planet_data.plateaus:
 		var plateau_surface_height: float = planet_data.radius * (plateau.flat_elevation + 1.0)
-		var dome_r: float = planet_data.plateau_radius + planet_data.plateau_dome_height * 0.5
-		var dome_center: Vector3 = plateau.direction * plateau_surface_height
-		var area: Area3D = Area3D.new()
-		area.gravity_space_override = Area3D.SPACE_OVERRIDE_REPLACE
-		area.priority = 1
-		area.gravity_point = false
-		area.gravity_direction = -plateau.direction
-		area.gravity = planet_gravity
-		area.set_meta("plateau_gravity", true)
-		var shape: SphereShape3D = SphereShape3D.new()
-		shape.radius = dome_r
-		var col: CollisionShape3D = CollisionShape3D.new()
-		col.shape = shape
-		col.position = dome_center
-		area.add_child(col)
-		add_child(area)
+		var pn: Vector3 = plateau.direction
+		var right: Vector3 = plateau.tangent_right
+		var fwd: Vector3 = plateau.tangent_fwd
+		var dome_height: float = planet_data.plateau_dome_height
+		var lobe_r_margin: float = planet_data.plateau_slope_width
+
+		for li: int in range(plateau.lobe_offsets.size()):
+			var offset: Vector2 = plateau.lobe_offsets[li]
+			var lobe_r: float = plateau.lobe_radii[li]
+			var lobe_center: Vector3 = (
+					plateau.direction * plateau_surface_height
+					+ right * offset.x
+					+ fwd * offset.y
+			)
+			var area: Area3D = Area3D.new()
+			area.gravity_space_override = Area3D.SPACE_OVERRIDE_REPLACE
+			area.priority = 1
+			area.gravity_point = false
+			area.gravity_direction = -plateau.direction
+			area.gravity = planet_gravity
+			area.set_meta("plateau_gravity", true)
+			var shape: CylinderShape3D = CylinderShape3D.new()
+			shape.radius = lobe_r + lobe_r_margin
+			shape.height = dome_height
+			var col: CollisionShape3D = CollisionShape3D.new()
+			col.shape = shape
+			# Orient cylinder so its Y-axis aligns with the plateau normal
+			col.transform = Transform3D(
+					Basis(right, pn, fwd),
+					lobe_center + pn * (dome_height * 0.5)
+			)
+			area.add_child(col)
+			add_child(area)
 
 	var biome_texture: ImageTexture = planet_data.update_biome_texture()
 	var hole_data: HoleData = planet_data.hole

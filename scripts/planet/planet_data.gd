@@ -2,8 +2,6 @@
 class_name PlanetData
 extends Resource
 
-const MIN_PLATEAU_AREA: float = 50.0  # minimum flat surface area in square meters
-
 @export var biomes: Array[PlanetBiome]:
 	set(val):
 		biomes = val
@@ -56,9 +54,21 @@ const MIN_PLATEAU_AREA: float = 50.0  # minimum flat surface area in square mete
 	set(val):
 		plateau_seed = val
 		emit_changed()
-@export var plateau_radius: float = 20.0:
+@export var plateau_lobe_radius_min: float = 5.0:
 	set(val):
-		plateau_radius = max(val, sqrt(MIN_PLATEAU_AREA / PI))
+		plateau_lobe_radius_min = max(1.0, val)
+		emit_changed()
+@export var plateau_lobe_radius_max: float = 20.0:
+	set(val):
+		plateau_lobe_radius_max = max(plateau_lobe_radius_min, val)
+		emit_changed()
+@export var plateau_lobe_spread: float = 10.0:
+	set(val):
+		plateau_lobe_spread = max(0.0, val)
+		emit_changed()
+@export var plateau_smooth_k: float = 3.0:
+	set(val):
+		plateau_smooth_k = max(0.1, val)
 		emit_changed()
 @export var plateau_slope_width: float = 8.0:
 	set(val):
@@ -116,11 +126,33 @@ func biome_percent_from_point(point_on_unit_sphere: Vector3) -> float:
 
 
 func plateau_normal_at(point_on_sphere: Vector3) -> Vector3:
-	var plateau_chord: float = plateau_radius / radius
 	for plateau: PlanetPlateau in plateaus:
-		if point_on_sphere.distance_to(plateau.direction) < plateau_chord:
+		if _plateau_sdf(point_on_sphere, plateau) < 0.0:
 			return plateau.direction
 	return point_on_sphere
+
+
+func plateau_blend_at(point_on_sphere: Vector3) -> float:
+	var slope_chord: float = plateau_slope_width / radius
+	var max_blend: float = 0.0
+	var warp_offset: float = 0.0
+	if (
+			planet_noise.size() > 0
+			and planet_noise[0] != null
+			and planet_noise[0].noise_map != null
+	):
+		var n0: PlanetNoise = planet_noise[0]
+		warp_offset = (
+				n0.noise_map.get_noise_3dv(point_on_sphere * n0.noise_scale * 0.5)
+				* (plateau_smooth_k / radius)
+				* plateau_warp_strength
+		)
+	for plateau: PlanetPlateau in plateaus:
+		var sdf: float = _plateau_sdf(point_on_sphere, plateau) + warp_offset
+		var blend: float = 1.0 - smoothstep(0.0, slope_chord, sdf)
+		if blend > max_blend:
+			max_blend = blend
+	return max_blend
 
 
 func regenerate_plateaus() -> void:
@@ -128,14 +160,34 @@ func regenerate_plateaus() -> void:
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	rng.seed = plateau_seed
 	for _i: int in range(plateau_count):
-		# Uniform random direction on unit sphere via spherical coordinates
 		var theta: float = rng.randf() * TAU
 		var z: float = rng.randf_range(-1.0, 1.0)
 		var r: float = sqrt(max(0.0, 1.0 - z * z))
 		var dir: Vector3 = Vector3(r * cos(theta), z, r * sin(theta))
 		var p: PlanetPlateau = PlanetPlateau.new()
 		p.direction = dir
-		p.flat_elevation = _noise_elevation(dir)
+
+		var right: Vector3 = dir.cross(Vector3.UP)
+		if right.length_squared() < 0.001:
+			right = dir.cross(Vector3.FORWARD)
+		right = right.normalized()
+		p.tangent_right = right
+		p.tangent_fwd = dir.cross(right).normalized()
+
+		var lobe_count: int = rng.randi_range(2, 4)
+		for j: int in range(lobe_count):
+			var lobe_r: float = rng.randf_range(plateau_lobe_radius_min, plateau_lobe_radius_max)
+			var offset: Vector2
+			if j == 0:
+				offset = Vector2.ZERO
+			else:
+				var ox: float = rng.randf_range(-plateau_lobe_spread, plateau_lobe_spread)
+				var oy: float = rng.randf_range(-plateau_lobe_spread, plateau_lobe_spread)
+				offset = Vector2(ox, oy)
+			p.lobe_offsets.append(offset)
+			p.lobe_radii.append(lobe_r)
+
+		p.flat_elevation = _max_elevation_in_plateau(p)
 		plateaus.append(p)
 
 
@@ -143,24 +195,23 @@ func point_on_planet(point_on_sphere: Vector3) -> Vector3:
 	var elevation: float = _noise_elevation(point_on_sphere)
 	var pos: Vector3 = point_on_sphere * radius * (elevation + 1.0)
 
-	var plateau_chord: float = plateau_radius / radius
 	var slope_chord: float = plateau_slope_width / radius
+	var warp_offset: float = 0.0
+	if (
+			planet_noise.size() > 0
+			and planet_noise[0] != null
+			and planet_noise[0].noise_map != null
+	):
+		var n0: PlanetNoise = planet_noise[0]
+		warp_offset = (
+				n0.noise_map.get_noise_3dv(point_on_sphere * n0.noise_scale * 0.5)
+				* (plateau_smooth_k / radius)
+				* plateau_warp_strength
+		)
 	for plateau: PlanetPlateau in plateaus:
-		var dist: float = point_on_sphere.distance_to(plateau.direction)
-		# Warp the boundary using noise layer 0 for organic shape — no extra asset required
-		if (
-				planet_noise.size() > 0
-				and planet_noise[0] != null
-				and planet_noise[0].noise_map != null
-		):
-			var n0: PlanetNoise = planet_noise[0]
-			var warp: float = n0.noise_map.get_noise_3dv(point_on_sphere * n0.noise_scale * 0.5)
-			dist += warp * plateau_chord * plateau_warp_strength
-		var blend: float = 1.0 - smoothstep(plateau_chord, plateau_chord + slope_chord, dist)
+		var sdf: float = _plateau_sdf(point_on_sphere, plateau) + warp_offset
+		var blend: float = 1.0 - smoothstep(0.0, slope_chord, sdf)
 		if blend > 0.0:
-			# Project this vertex direction onto the plateau's tangent plane to get a
-			# genuinely flat surface. Intersection of ray (origin + t*d) with the plane
-			# through plateau_center perpendicular to plateau.direction gives t = h / dot(d, N).
 			var dot_dn: float = point_on_sphere.dot(plateau.direction)
 			if dot_dn > 0.001:
 				var plateau_height: float = radius * (plateau.flat_elevation + 1.0)
@@ -192,6 +243,33 @@ func update_biome_texture() -> ImageTexture:
 	return image_texture
 
 
+# Samples the terrain elevation at the plateau center, each lobe center, and
+# 8 boundary points per lobe, returning the maximum. Used so the flat surface
+# is always at or above the highest terrain within the plateau area.
+func _max_elevation_in_plateau(plateau: PlanetPlateau) -> float:
+	var dir: Vector3 = plateau.direction
+	var right: Vector3 = plateau.tangent_right
+	var fwd: Vector3 = plateau.tangent_fwd
+
+	var max_elev: float = _noise_elevation(dir)
+	for i: int in range(plateau.lobe_offsets.size()):
+		var offset: Vector2 = plateau.lobe_offsets[i]
+		var lobe_r: float = plateau.lobe_radii[i]
+		var center_dir: Vector3 = (
+				dir + right * (offset.x / radius) + fwd * (offset.y / radius)
+		).normalized()
+		max_elev = max(max_elev, _noise_elevation(center_dir))
+		for j: int in range(8):
+			var a: float = float(j) / 8.0 * TAU
+			var bx: float = offset.x + cos(a) * lobe_r
+			var by: float = offset.y + sin(a) * lobe_r
+			var boundary_dir: Vector3 = (
+					dir + right * (bx / radius) + fwd * (by / radius)
+			).normalized()
+			max_elev = max(max_elev, _noise_elevation(boundary_dir))
+	return max_elev
+
+
 func _noise_elevation(point_on_sphere: Vector3) -> float:
 	# Layer 0 is the base layer — other layers can use it as a mask so detail
 	# noise only appears where the base terrain already has height (e.g. no craters in oceans).
@@ -211,3 +289,36 @@ func _noise_elevation(point_on_sphere: Vector3) -> float:
 				base_elevation = level_elevation
 			elevation += level_elevation
 	return elevation
+
+
+# Returns the smooth-union SDF of all plateau lobes in unit-sphere chord space.
+# Negative = inside the plateau shape, positive = outside.
+# Returns 1e9 for points on the opposite hemisphere, preventing antipodal ghost blends.
+func _plateau_sdf(point_on_sphere: Vector3, plateau: PlanetPlateau) -> float:
+	if point_on_sphere.dot(plateau.direction) <= 0.0:
+		return 1e9
+
+	var p_proj: Vector3 = (
+			point_on_sphere - point_on_sphere.dot(plateau.direction) * plateau.direction
+	)
+	var p_2d: Vector2 = Vector2(
+			p_proj.dot(plateau.tangent_right), p_proj.dot(plateau.tangent_fwd)
+	)
+
+	var smooth_k: float = plateau_smooth_k / radius
+	var sdf: float = 1e9
+	for i: int in range(plateau.lobe_offsets.size()):
+		var lobe_center: Vector2 = plateau.lobe_offsets[i] / radius
+		var lobe_r: float = plateau.lobe_radii[i] / radius
+		var d: float = (p_2d - lobe_center).length() - lobe_r
+		if i == 0:
+			sdf = d
+		else:
+			sdf = _smin(sdf, d, smooth_k)
+	return sdf
+
+
+# Polynomial smooth minimum — blends two SDF values with C1 continuity.
+func _smin(a: float, b: float, k: float) -> float:
+	var h: float = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0)
+	return lerp(b, a, h) - k * h * (1.0 - h)
