@@ -66,6 +66,7 @@ func on_data_changed() -> void:
 			)
 			area.add_child(col)
 			add_child(area)
+			area.owner = EditorInterface.get_edited_scene_root()
 
 	var biome_texture: ImageTexture = planet_data.update_biome_texture()
 	var hole_data: HoleData = planet_data.hole
