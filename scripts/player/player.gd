@@ -38,9 +38,4 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	
 	speed_display.text = str(snapped(current_speed, 0.01))
 	
-	#Code below applies some drag - not sure if will be used in the end
-	#if current_speed > 0:
-		#var drag: Vector3 = -state.linear_velocity.normalized() * current_speed * current_speed * drag_factor
-		#state.linear_velocity += drag
-	
 	move_and_collide(state.linear_velocity)
