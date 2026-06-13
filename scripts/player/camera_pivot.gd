@@ -28,7 +28,7 @@ func _follow_ship(delta: float, camera_pitch: float) -> void:
 	basis = basis.slerp(ship_target.global_transform.basis, interpolation_weight * delta)
 	basis = basis.rotated(basis.x, -camera_pitch * PI * delta)
 	basis = basis.orthonormalized()
-	position = position.lerp(ship_target.global_position, interpolation_weight * delta)
+	position = ship_target.global_position
 
 
 func _orbit_ball(delta: float) -> void:
